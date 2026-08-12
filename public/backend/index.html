@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 免费评估记录后台</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --good: #047857;
+      --good-soft: #ecfdf5;
+      --bad: #be123c;
+      --bad-soft: #fff1f2;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg); }
+    main { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 40px; }
+    header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 18px; }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); line-height: 1.7; }
+    .api-pill { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); white-space: nowrap; font-size: 13px; }
+    .tabs { display: inline-grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin: 8px 0 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .tab { height: 38px; border: 0; border-radius: 6px; padding: 0 16px; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; }
+    .tab.active { background: var(--accent); color: #fff; }
+    .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05); }
+    .filters { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)) auto auto; gap: 12px; padding: 16px; margin-bottom: 16px; }
+    label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+    input { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; color: var(--text); background: #fff; outline: none; font-size: 14px; }
+    input:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10); }
+    button { height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; background: #fff; color: var(--text); cursor: pointer; font-size: 14px; white-space: nowrap; }
+    button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .table-head { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .table-head h2 { margin: 0; font-size: 18px; }
+    .table-actions { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+    .table-wrap { overflow-x: auto; }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); }
+    .metric-card { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #f9fafb; }
+    .metric-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .metric-value { font-size: 26px; font-weight: 700; color: var(--text); }
+    .activity-filters { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; padding: 16px; border-bottom: 1px solid var(--line); }
+    .activity-filters label { width: 180px; }
+    .asset-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto; gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); }
+    .asset-result { padding: 16px; border-bottom: 1px solid var(--line); background: #f9fafb; }
+    .asset-result.hidden { display: none; }
+    .asset-result h3 { margin: 0 0 10px; font-size: 16px; }
+    .asset-result-grid { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; }
+    .asset-kv { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+    .asset-kv span { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+    .asset-kv strong { overflow-wrap: anywhere; font-size: 14px; }
+    .asset-basis { margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fff; }
+    .asset-basis-title { margin-bottom: 8px; font-weight: 700; color: var(--text); }
+    .asset-basis ul { margin: 0; padding-left: 18px; color: var(--text); line-height: 1.7; }
+    .asset-basis li { overflow-wrap: anywhere; }
+    .mini-select { height: 34px; min-width: 92px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); }
+    .mini-btn { height: 34px; padding: 0 10px; font-size: 12px; }
+    table { width: 100%; min-width: 1500px; border-collapse: collapse; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 14px; }
+    th { color: var(--muted); background: #f9fafb; font-size: 12px; font-weight: 600; }
+    tbody tr:hover { background: #f9fafb; }
+    .link-cell { max-width: 280px; overflow-wrap: anywhere; color: var(--accent); }
+    .game-cell { min-width: 180px; font-weight: 600; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 58px; border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 600; }
+    .badge.pass { color: var(--good); background: var(--good-soft); }
+    .badge.fail { color: var(--bad); background: var(--bad-soft); }
+    .empty { padding: 38px 16px; text-align: center; color: var(--muted); }
+    .hidden { display: none; }
+    @media (max-width: 920px) {
+      header { display: block; }
+      .api-pill { display: inline-block; margin-top: 12px; }
+      .filters { grid-template-columns: 1fr; }
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .asset-toolbar { grid-template-columns: 1fr; }
+      .asset-result-grid { grid-template-columns: 1fr; }
+      .table-head { display: block; }
+      .table-actions { margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>AI 免费评估记录后台</h1>
+        <p>查询用户在 AI 免费评估页面提交的记录，并按游戏与 APP ID 查看评估统计。</p>
+      </div>
+      <div class="api-pill">API: 当前站点后端</div>
+    </header>
+
+    <nav class="tabs" aria-label="后台页面">
+      <button class="tab active" id="recordsTab" type="button">评估记录</button>
+      <button class="tab" id="statsTab" type="button">数据统计</button>
+      <button class="tab" id="activityTab" type="button">活动页统计</button>
+      <button class="tab" id="assetTab" type="button">评估后台</button>
+    </nav>
+
+    <section class="panel filters">
+      <label>搜索手机号<input id="phoneFilter" inputmode="numeric" placeholder="输入手机号" autocomplete="off" /></label>
+      <label>搜索 Visitor ID<input id="visitorFilter" placeholder="输入 visitor_id" autocomplete="off" /></label>
+      <label>搜索游戏名称<input id="gameFilter" placeholder="输入游戏名称" autocomplete="off" /></label>
+      <label>搜索 APP ID<input id="appidFilter" inputmode="numeric" placeholder="输入 APP ID" autocomplete="off" /></label>
+      <label>开始日期<input id="startDateFilter" type="date" /></label>
+      <label>结束日期<input id="endDateFilter" type="date" /></label>
+      <button id="searchBtn" class="primary" type="button">搜索</button>
+      <button id="resetBtn" type="button">重置</button>
+    </section>
+
+    <section class="panel" id="recordsPage">
+      <div class="table-head">
+        <h2>所有用户评估记录</h2>
+        <div class="table-actions">
+          <span id="recordsSummary">正在读取...</span>
+          <button id="refreshBtn" type="button">刷新</button>
+          <button id="exportBtn" type="button">导出 Excel</button>
+          <button id="prevPage" type="button">上一页</button>
+          <button id="nextPage" type="button">下一页</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>提交日期时间</th>
+              <th>商店链接</th>
+              <th>游戏名称</th>
+              <th>APP ID</th>
+              <th>手机号</th>
+              <th>Visitor ID</th>
+              <th>修改需求</th>
+              <th>评估结果</th>
+              <th>是否点击返回活动页</th>
+            </tr>
+          </thead>
+          <tbody id="recordRows">
+            <tr><td colspan="9" class="empty">正在读取评估记录...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="statsPage">
+      <div class="table-head">
+        <h2>数据统计</h2>
+        <div class="table-actions"><span id="statsSummary">正在读取...</span></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>游戏名称</th>
+              <th>APP ID</th>
+              <th>用户提交评估总次数</th>
+              <th>评估通过次数</th>
+              <th>评估不通过次数</th>
+              <th>评估通过并点击支付按钮的次数</th>
+              <th>点击支付按钮率</th>
+            </tr>
+          </thead>
+          <tbody id="statsRows">
+            <tr><td colspan="7" class="empty">正在读取统计数据...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="activityPage">
+      <div class="table-head">
+        <h2>活动页统计</h2>
+        <div class="table-actions">
+          <span id="activitySummary">正在读取...</span>
+          <button id="refreshActivityBtn" type="button">刷新</button>
+        </div>
+      </div>
+      <div class="activity-filters">
+        <label>开始日期<input id="activityStartDate" type="date" /></label>
+        <label>结束日期<input id="activityEndDate" type="date" /></label>
+        <button id="todayActivityBtn" class="primary" type="button">查看今日</button>
+        <button id="clearActivityDateBtn" type="button">清空日期</button>
+      </div>
+      <div class="metric-grid" id="activityCards">
+        <div class="metric-card"><div class="metric-label">活动页曝光次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">活动页曝光人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估并通过次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估并通过人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">评估通过并点击支付按钮次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">评估通过并点击支付按钮人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">支付点击率</div><div class="metric-value">-</div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>活动页曝光次数</th>
+              <th>活动页曝光人数</th>
+              <th>曝光人群点击评估次数</th>
+              <th>曝光人群点击评估人数</th>
+              <th>曝光人群点击评估并通过次数</th>
+              <th>曝光人群点击评估并通过人数</th>
+              <th>评估通过并点击支付按钮次数</th>
+              <th>评估通过并点击支付按钮人数</th>
+              <th>支付点击率</th>
+            </tr>
+          </thead>
+          <tbody id="activityRows">
+            <tr><td colspan="10" class="empty">正在读取每日统计...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="assetPage">
+      <div class="table-head">
+        <h2>Steam 资产评估后台</h2>
+        <div class="table-actions">
+          <span id="assetSummary">正在读取...</span>
+          <button id="refreshAssetBtn" type="button">刷新名单</button>
+          <button id="prevAssetPage" type="button">上一页</button>
+          <button id="nextAssetPage" type="button">下一页</button>
+        </div>
+      </div>
+      <div class="asset-toolbar">
+        <input id="assetQuery" placeholder="输入 Steam 商店链接或 APP ID，例如 https://store.steampowered.com/app/2939790/ / 2939790" autocomplete="off" />
+        <button id="assetResetBtn" type="button">查看查询记录</button>
+        <button id="assetSearchBtn" class="primary" type="button">评估游戏</button>
+      </div>
+      <div class="asset-result hidden" id="assetResult"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>评估结果</th>
+              <th>人工结果</th>
+              <th>游戏英文名</th>
+              <th>游戏中文名</th>
+              <th>APP ID</th>
+              <th>客户端状态</th>
+              <th>客户端开发状态</th>
+              <th>App Type</th>
+              <th>Technologies</th>
+              <th>Release Date</th>
+              <th>categories</th>
+              <th>Tag</th>
+              <th>screenshots</th>
+              <th>更新时间</th>
+            </tr>
+          </thead>
+          <tbody id="assetRows">
+            <tr><td colspan="14" class="empty">正在读取评估记录...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DEPLOYED_API_BASE = "https://xmodhub-ai-evaluation.lijiaqi13648060.chatgpt.site";
+    const API_BASE = window.location.protocol === "file:" ? DEPLOYED_API_BASE : window.location.origin;
+    const pageSize = 50;
+    const refreshIntervalMs = 5000;
+    let currentPage = 1;
+    let currentAssetPage = 1;
+    let currentTab = "records";
+    let lastRecordsTotal = 0;
+    let isLoadingRecords = false;
+    let isLoadingStats = false;
+    let isLoadingActivity = false;
+    let isLoadingAssets = false;
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function filters() {
+      return {
+        phone: $("phoneFilter").value.trim(),
+        visitor_id: $("visitorFilter").value.trim(),
+        game_name: $("gameFilter").value.trim(),
+        appid: $("appidFilter").value.trim(),
+        start_date: $("startDateFilter").value,
+        end_date: $("endDateFilter").value
+      };
+    }
+
+    function queryString(extra = {}) {
+      const params = new URLSearchParams({ ...filters(), ...extra });
+      [...params.keys()].forEach((key) => {
+        if (!params.get(key)) params.delete(key);
+      });
+      return params.toString();
+    }
+
+    async function request(path) {
+      const response = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
+      return data;
+    }
+
+    function resultBadge(record) {
+      const passed = Boolean(record.passed) || String(record.result).toLowerCase() === "pass";
+      return `<span class="badge ${passed ? "pass" : "fail"}">${passed ? "通过" : "不通过"}</span>`;
+    }
+
+    function yesNoBadge(value) {
+      return `<span class="badge ${value ? "pass" : "fail"}">${value ? "是" : "否"}</span>`;
+    }
+
+    function formatRate(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "0.00%";
+      return `${(n * 100).toFixed(2)}%`;
+    }
+
+    function formatPercent(value) {
+      if (value === null || value === undefined || value === "") return "-";
+      const n = Number(value);
+      if (!Number.isFinite(n)) return value;
+      return `${(n * 100).toFixed(1)}%`;
+    }
+
+    function formatNumber(value) {
+      if (value === null || value === undefined || value === "") return "-";
+      const n = Number(value);
+      return Number.isFinite(n) ? n.toLocaleString("zh-CN") : value;
+    }
+
+    function assetPassBadge(passed) {
+      return `<span class="badge ${passed ? "pass" : "fail"}">${passed ? "通过" : "不通过"}</span>`;
+    }
+
+    function buildAssetBasis(data, record, query, passed) {
+      if (Array.isArray(data.basis) && data.basis.length) {
+        return data.basis;
+      }
+      if (!passed) {
+        return [
+          `查询内容“${data.query || query}”未匹配到 Steam 资产评估名单中的游戏名称、Steam 名称或 APP ID。`,
+          "第 4 个 Tab 的评估后台按 Steam 资产名单判断：不在名单中即评估不通过。"
+        ];
+      }
+      return [
+        `查询内容“${data.query || query}”已匹配到资产名单记录。`,
+        `匹配记录：${record.name || record.steam_name || "-"}，APP ID：${data.appid || record.appid || "-"}。`,
+        "第 4 个 Tab 的评估后台按 Steam 资产名单判断：在名单中即评估通过。"
+      ];
+    }
+
+    function renderAssetBasis(data, record, query, passed) {
+      const basis = buildAssetBasis(data, record, query, passed);
+      return `
+        <div class="asset-basis">
+          <div class="asset-basis-title">判断依据</div>
+          <ul>
+            ${basis.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        </div>
+      `;
+    }
+
+    function manualSelect(item) {
+      const appid = escapeHtml(item.appid || "");
+      const value = item.manual_passed === true ? "pass" : item.manual_passed === false ? "fail" : "";
+      return `
+        <select class="mini-select" data-manual-appid="${appid}">
+          <option value="" ${value === "" ? "selected" : ""}>自动</option>
+          <option value="pass" ${value === "pass" ? "selected" : ""}>通过</option>
+          <option value="fail" ${value === "fail" ? "selected" : ""}>不通过</option>
+        </select>
+        <button class="mini-btn" type="button" data-save-manual="${appid}">保存</button>
+      `;
+    }
+
+    async function saveManualResult(appid) {
+      const select = document.querySelector(`[data-manual-appid="${CSS.escape(appid)}"]`);
+      if (!select) return;
+      const value = select.value;
+      const manual_passed = value === "" ? null : value === "pass";
+      await fetch(`${API_BASE}/api/evaluation/assets/${encodeURIComponent(appid)}/manual-result`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual_passed, manual_reason: manual_passed === null ? "" : "后台人工编辑" })
+      }).then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
+        return data;
+      });
+      if ($("assetQuery").value.trim()) {
+        await searchAsset();
+      } else {
+        await loadAssets(currentAssetPage);
+      }
+    }
+
+    function todayString() {
+      const date = new Date();
+      const pad = (value) => String(value).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function activityQueryString() {
+      const params = new URLSearchParams({
+        phone: $("phoneFilter").value.trim(),
+        visitor_id: $("visitorFilter").value.trim(),
+        start_date: $("activityStartDate").value,
+        end_date: $("activityEndDate").value
+      });
+      [...params.keys()].forEach((key) => {
+        if (!params.get(key)) params.delete(key);
+      });
+      return params.toString();
+    }
+
+    async function loadActivityStats() {
+      if (isLoadingActivity) return;
+      isLoadingActivity = true;
+      $("activitySummary").textContent = "正在读取...";
+      $("activityCards").innerHTML = `
+        <div class="metric-card"><div class="metric-label">活动页曝光次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">活动页曝光人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估并通过次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估并通过人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">评估通过并点击支付按钮次数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">评估通过并点击支付按钮人数</div><div class="metric-value">-</div></div>
+        <div class="metric-card"><div class="metric-label">支付点击率</div><div class="metric-value">-</div></div>
+      `;
+      $("activityRows").innerHTML = `<tr><td colspan="10" class="empty">正在读取每日统计...</td></tr>`;
+      try {
+        const qs = activityQueryString();
+        const data = await request(`/api/exposure/activity-stats${qs ? `?${qs}` : ""}`);
+        const dateText = $("activityStartDate").value || $("activityEndDate").value
+          ? `，日期 ${$("activityStartDate").value || "不限"} 至 ${$("activityEndDate").value || "不限"}`
+          : "";
+        $("activitySummary").textContent = `${new Date().toLocaleTimeString("zh-CN")} 已更新${dateText}`;
+        $("activityCards").innerHTML = `
+        <div class="metric-card"><div class="metric-label">活动页曝光次数</div><div class="metric-value">${escapeHtml(data.exposure_count)}</div></div>
+        <div class="metric-card"><div class="metric-label">活动页曝光人数</div><div class="metric-value">${escapeHtml(data.visitor_count)}</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估次数</div><div class="metric-value">${escapeHtml(data.evaluation_click_count)}</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估人数</div><div class="metric-value">${escapeHtml(data.evaluation_click_visitor_count)}</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估并通过次数</div><div class="metric-value">${escapeHtml(data.passed_evaluation_count)}</div></div>
+        <div class="metric-card"><div class="metric-label">曝光人群点击评估并通过人数</div><div class="metric-value">${escapeHtml(data.passed_evaluation_visitor_count)}</div></div>
+        <div class="metric-card"><div class="metric-label">评估通过并点击支付按钮次数</div><div class="metric-value">${escapeHtml(data.passed_payment_clicked_count || 0)}</div></div>
+        <div class="metric-card"><div class="metric-label">评估通过并点击支付按钮人数</div><div class="metric-value">${escapeHtml(data.passed_payment_clicked_visitor_count || 0)}</div></div>
+        <div class="metric-card"><div class="metric-label">支付点击率</div><div class="metric-value">${formatRate(data.payment_click_rate || 0)}</div></div>
+      `;
+        if (!data.daily?.length) {
+          $("activityRows").innerHTML = `<tr><td colspan="10" class="empty">暂无每日统计</td></tr>`;
+        } else {
+          $("activityRows").innerHTML = data.daily.map((item) => `
+            <tr>
+              <td>${escapeHtml(item.date || "-")}</td>
+              <td>${escapeHtml(item.exposure_count || 0)}</td>
+              <td>${escapeHtml(item.visitor_count || 0)}</td>
+              <td>${escapeHtml(item.evaluation_click_count || 0)}</td>
+              <td>${escapeHtml(item.evaluation_click_visitor_count || 0)}</td>
+              <td>${escapeHtml(item.passed_evaluation_count || 0)}</td>
+              <td>${escapeHtml(item.passed_evaluation_visitor_count || 0)}</td>
+              <td>${escapeHtml(item.passed_payment_clicked_count || 0)}</td>
+              <td>${escapeHtml(item.passed_payment_clicked_visitor_count || 0)}</td>
+              <td>${formatRate(item.payment_click_rate || 0)}</td>
+            </tr>
+          `).join("");
+        }
+      } catch (error) {
+        $("activitySummary").textContent = "读取失败";
+        $("activityCards").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+        $("activityRows").innerHTML = `<tr><td colspan="10" class="empty">${escapeHtml(error.message)}</td></tr>`;
+      } finally {
+        isLoadingActivity = false;
+      }
+    }
+
+    async function loadRecords(page = 1) {
+      if (isLoadingRecords) return;
+      isLoadingRecords = true;
+      currentPage = page;
+      if (!lastRecordsTotal) {
+          $("recordRows").innerHTML = `<tr><td colspan="9" class="empty">正在读取评估记录...</td></tr>`;
+      }
+      try {
+        const qs = queryString({ page, page_size: pageSize });
+        const data = await request(`/api/evaluation/records?${qs}`);
+        lastRecordsTotal = data.total;
+        const totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
+        $("recordsSummary").textContent = `共 ${data.total} 条，第 ${data.page}/${totalPages} 页，${new Date().toLocaleTimeString("zh-CN")} 已更新`;
+        $("prevPage").disabled = data.page <= 1;
+        $("nextPage").disabled = data.page >= totalPages;
+
+        if (!data.items.length) {
+          $("recordRows").innerHTML = `<tr><td colspan="9" class="empty">暂无评估记录</td></tr>`;
+          return;
+        }
+
+        $("recordRows").innerHTML = data.items.map((item) => `
+          <tr>
+            <td>${escapeHtml(item.submitted_at || "-")}</td>
+            <td class="link-cell">${escapeHtml(item.store_url || "-")}</td>
+            <td class="game-cell">${escapeHtml(item.game_name || item.steam_game_name || "-")}</td>
+            <td>${escapeHtml(item.appid || "-")}</td>
+            <td>${escapeHtml(item.phone || "-")}</td>
+            <td class="link-cell">${escapeHtml(item.visitor_id || "-")}</td>
+            <td>${escapeHtml(item.requirements || "-")}</td>
+            <td>${resultBadge(item)}</td>
+            <td>${yesNoBadge(Boolean(item.payment_clicked))}</td>
+          </tr>
+        `).join("");
+      } catch (error) {
+        $("recordsSummary").textContent = "读取失败";
+        $("recordRows").innerHTML = `<tr><td colspan="9" class="empty">${escapeHtml(error.message)}</td></tr>`;
+      } finally {
+        isLoadingRecords = false;
+      }
+    }
+
+    function renderAssetRows(items, failedQuery = "") {
+      if (failedQuery) {
+        $("assetRows").innerHTML = `
+          <tr>
+            <td>${assetPassBadge(false)}</td>
+            <td class="game-cell">${escapeHtml(failedQuery)}</td>
+            <td colspan="12" class="empty">该游戏无法完成评估。</td>
+          </tr>
+        `;
+        return;
+      }
+
+      if (!items.length) {
+        $("assetRows").innerHTML = `<tr><td colspan="14" class="empty">暂无评估查询记录</td></tr>`;
+        return;
+      }
+
+      $("assetRows").innerHTML = items.map((item) => `
+        <tr>
+          <td>${assetPassBadge(Boolean(item.passed))}</td>
+          <td>${manualSelect(item)}</td>
+          <td class="game-cell">${escapeHtml(item.game_name_en || item.steam_name || item.name || "-")}</td>
+          <td>${escapeHtml(item.game_name_zh || "-")}</td>
+          <td>${escapeHtml(item.appid ?? "-")}</td>
+          <td>${escapeHtml(item.client_status || "-")}</td>
+          <td>${escapeHtml(item.client_development_status || "-")}</td>
+          <td>${escapeHtml(item.app_type || item.type || "-")}</td>
+          <td>${escapeHtml(item.technologies ?? "-")}</td>
+          <td>${escapeHtml(item.release_date || item.release || "-")}</td>
+          <td>${escapeHtml(item.categories || "-")}</td>
+          <td>${escapeHtml(item.tag || "-")}</td>
+          <td class="link-cell">${item.screenshots ? `<a href="${escapeHtml(item.screenshots)}" target="_blank" rel="noopener">查看</a>` : "-"}</td>
+          <td>${escapeHtml(item.queried_at || "-")}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadAssets(page = 1) {
+      if (isLoadingAssets) return;
+      isLoadingAssets = true;
+      currentAssetPage = page;
+      $("assetResult").classList.add("hidden");
+      $("assetRows").innerHTML = `<tr><td colspan="14" class="empty">正在读取评估记录...</td></tr>`;
+      try {
+        const data = await request(`/api/evaluation?page=${page}&page_size=${pageSize}`);
+        const totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
+        $("assetSummary").textContent = `共 ${data.total} 条查询记录，第 ${data.page}/${totalPages} 页，${new Date().toLocaleTimeString("zh-CN")} 已更新`;
+        $("prevAssetPage").disabled = data.page <= 1;
+        $("nextAssetPage").disabled = data.page >= totalPages;
+        renderAssetRows(data.items || []);
+      } catch (error) {
+        $("assetSummary").textContent = "读取失败";
+        $("assetRows").innerHTML = `<tr><td colspan="14" class="empty">${escapeHtml(error.message)}</td></tr>`;
+      } finally {
+        isLoadingAssets = false;
+      }
+    }
+
+    async function searchAsset() {
+      const query = $("assetQuery").value.trim();
+      if (!query || isLoadingAssets) return;
+      isLoadingAssets = true;
+      $("assetSummary").textContent = "正在评估...";
+      $("assetResult").classList.add("hidden");
+      $("assetRows").innerHTML = `<tr><td colspan="14" class="empty">正在评估游戏...</td></tr>`;
+      try {
+        const data = await request(`/api/evaluation/assets/check?q=${encodeURIComponent(query)}`);
+        const record = data.record || {};
+        const passed = Boolean(data.passed);
+        $("assetSummary").textContent = `${new Date().toLocaleTimeString("zh-CN")} 已完成评估`;
+        $("assetResult").classList.remove("hidden");
+        $("assetResult").innerHTML = `
+          <h3>评估结果：${assetPassBadge(passed)}</h3>
+          <div class="asset-result-grid">
+            <div class="asset-kv"><span>查询内容</span><strong>${escapeHtml(data.query || query)}</strong></div>
+            <div class="asset-kv"><span>游戏英文名</span><strong>${escapeHtml(record.game_name_en || record.name || record.steam_name || "-")}</strong></div>
+            <div class="asset-kv"><span>游戏中文名</span><strong>${escapeHtml(record.game_name_zh || "-")}</strong></div>
+            <div class="asset-kv"><span>APP ID</span><strong>${escapeHtml(data.appid || record.appid || "-")}</strong></div>
+            <div class="asset-kv"><span>客户端状态</span><strong>${escapeHtml(data.client_status || "-")}</strong></div>
+            <div class="asset-kv"><span>开发状态</span><strong>${escapeHtml(data.client_development_status || "-")}</strong></div>
+            <div class="asset-kv"><span>App Type</span><strong>${escapeHtml(record.app_type || record.type || "-")}</strong></div>
+            <div class="asset-kv"><span>引擎</span><strong>${escapeHtml(record.technologies || "-")}</strong></div>
+          </div>
+          ${renderAssetBasis(data, record, query, passed)}
+          <p style="margin-top:12px;">${escapeHtml(data.reason || "")}</p>
+        `;
+        if (record.name || record.appid) {
+          renderAssetRows([{
+            ...record,
+            passed,
+            manual_passed: data.manual_passed,
+            manual_reason: data.manual_reason,
+            client_status: data.client_status,
+            client_development_status: data.client_development_status,
+            queried_at: new Date().toISOString()
+          }]);
+        } else {
+          renderAssetRows([], query);
+        }
+      } catch (error) {
+        $("assetSummary").textContent = "评估失败";
+        $("assetRows").innerHTML = `<tr><td colspan="14" class="empty">${escapeHtml(error.message)}</td></tr>`;
+      } finally {
+        isLoadingAssets = false;
+      }
+    }
+
+    async function loadStats() {
+      if (isLoadingStats) return;
+      isLoadingStats = true;
+      $("statsRows").innerHTML = `<tr><td colspan="7" class="empty">正在读取统计数据...</td></tr>`;
+      try {
+        const qs = queryString();
+        const data = await request(`/api/evaluation/records/stats${qs ? `?${qs}` : ""}`);
+        const dateText = $("startDateFilter").value || $("endDateFilter").value
+          ? `，日期 ${$("startDateFilter").value || "不限"} 至 ${$("endDateFilter").value || "不限"}`
+          : "";
+        $("statsSummary").textContent = `共 ${data.total} 个游戏统计项，${new Date().toLocaleTimeString("zh-CN")} 已更新${dateText}`;
+
+        if (!data.items.length) {
+          $("statsRows").innerHTML = `<tr><td colspan="7" class="empty">暂无统计数据</td></tr>`;
+          return;
+        }
+
+        $("statsRows").innerHTML = data.items.map((item) => `
+          <tr>
+            <td class="game-cell">${escapeHtml(item.game_name)}</td>
+            <td>${escapeHtml(item.appid)}</td>
+            <td>${escapeHtml(item.total_count)}</td>
+            <td>${escapeHtml(item.passed_count)}</td>
+            <td>${escapeHtml(item.failed_count)}</td>
+            <td>${escapeHtml(item.payment_clicked_count || 0)}</td>
+            <td>${formatRate(item.payment_click_rate)}</td>
+          </tr>
+        `).join("");
+      } catch (error) {
+        $("statsSummary").textContent = "读取失败";
+        $("statsRows").innerHTML = `<tr><td colspan="7" class="empty">${escapeHtml(error.message)}</td></tr>`;
+      } finally {
+        isLoadingStats = false;
+      }
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      $("recordsTab").classList.toggle("active", tab === "records");
+      $("statsTab").classList.toggle("active", tab === "stats");
+      $("activityTab").classList.toggle("active", tab === "activity");
+      $("assetTab").classList.toggle("active", tab === "asset");
+      $("recordsPage").classList.toggle("hidden", tab !== "records");
+      $("statsPage").classList.toggle("hidden", tab !== "stats");
+      $("activityPage").classList.toggle("hidden", tab !== "activity");
+      $("assetPage").classList.toggle("hidden", tab !== "asset");
+      if (tab === "records") loadRecords(currentPage);
+      if (tab === "stats") loadStats();
+      if (tab === "activity") loadActivityStats();
+      if (tab === "asset") loadAssets(currentAssetPage);
+    }
+
+    function applySearch() {
+      currentPage = 1;
+      if (currentTab === "records") loadRecords(1);
+      if (currentTab === "stats") loadStats();
+      if (currentTab === "activity") loadActivityStats();
+      if (currentTab === "asset") loadAssets(1);
+    }
+
+    $("recordsTab").addEventListener("click", () => switchTab("records"));
+    $("statsTab").addEventListener("click", () => switchTab("stats"));
+    $("activityTab").addEventListener("click", () => switchTab("activity"));
+    $("assetTab").addEventListener("click", () => switchTab("asset"));
+    $("searchBtn").addEventListener("click", applySearch);
+    $("refreshBtn").addEventListener("click", () => loadRecords(currentPage));
+    $("refreshActivityBtn").addEventListener("click", loadActivityStats);
+    $("refreshAssetBtn").addEventListener("click", () => loadAssets(currentAssetPage));
+    $("assetSearchBtn").addEventListener("click", searchAsset);
+    $("assetResetBtn").addEventListener("click", () => {
+      $("assetQuery").value = "";
+      loadAssets(1);
+    });
+    $("todayActivityBtn").addEventListener("click", () => {
+      const today = todayString();
+      $("activityStartDate").value = today;
+      $("activityEndDate").value = today;
+      loadActivityStats();
+    });
+    $("clearActivityDateBtn").addEventListener("click", () => {
+      $("activityStartDate").value = "";
+      $("activityEndDate").value = "";
+      loadActivityStats();
+    });
+    $("activityStartDate").addEventListener("change", loadActivityStats);
+    $("activityEndDate").addEventListener("change", loadActivityStats);
+    $("resetBtn").addEventListener("click", () => {
+      $("phoneFilter").value = "";
+      $("visitorFilter").value = "";
+      $("gameFilter").value = "";
+      $("appidFilter").value = "";
+      $("startDateFilter").value = "";
+      $("endDateFilter").value = "";
+      applySearch();
+    });
+    $("exportBtn").addEventListener("click", () => {
+      if (!lastRecordsTotal) return;
+      const qs = queryString();
+      window.location.href = `${API_BASE}/api/evaluation/records/export${qs ? `?${qs}` : ""}`;
+    });
+    $("prevPage").addEventListener("click", () => loadRecords(currentPage - 1));
+    $("nextPage").addEventListener("click", () => loadRecords(currentPage + 1));
+    $("prevAssetPage").addEventListener("click", () => loadAssets(currentAssetPage - 1));
+    $("nextAssetPage").addEventListener("click", () => loadAssets(currentAssetPage + 1));
+    $("assetRows").addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-save-manual]");
+      if (!button) return;
+      button.disabled = true;
+      try {
+        await saveManualResult(button.dataset.saveManual);
+      } catch (error) {
+        window.alert(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    $("assetQuery").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") searchAsset();
+    });
+    ["phoneFilter", "visitorFilter", "gameFilter", "appidFilter"].forEach((id) => {
+      $(id).addEventListener("keydown", (event) => {
+        if (event.key === "Enter") applySearch();
+      });
+    });
+    $("startDateFilter").addEventListener("change", applySearch);
+    $("endDateFilter").addEventListener("change", applySearch);
+
+    loadRecords(1);
+    window.setInterval(() => {
+      if (document.hidden) return;
+      if (currentTab === "records") loadRecords(currentPage);
+      if (currentTab === "stats") loadStats();
+      if (currentTab === "activity") loadActivityStats();
+      if (currentTab === "asset") loadAssets(currentAssetPage);
+    }, refreshIntervalMs);
+  </script>
+</body>
+</html>

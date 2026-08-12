@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09111f" />
+  <title>XMODhub AI免费评估</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./styles.css?v=20260805-pending-result" />
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero">
+      <h1>AI免费评估</h1>
+      <p>
+        提交你的单机游戏修改器需求，AI 将实时评估是否允许被赞助优先开发。
+        评估通过并支付赞助费后，立即进入开发流程。
+      </p>
+    </header>
+
+    <section class="steps-panel" aria-label="活动流程">
+      <article class="step-card">
+        <span class="step-tag">第1步</span>
+        <h2>输入游戏链接，AI免费评估</h2>
+      </article>
+      <article class="step-card">
+        <span class="step-tag">第2步</span>
+        <h2>AI评估通过，前往支付页面</h2>
+      </article>
+      <article class="step-card">
+        <span class="step-tag">第3步</span>
+        <h2>完成支付，等待修改器上线</h2>
+      </article>
+    </section>
+
+    <section class="workspace" aria-label="AI免费评估表单">
+      <form class="panel form-panel" id="evaluateForm" novalidate>
+        <div class="field-group">
+          <label for="gameInput">输入 Steam 商店页面链接</label>
+          <div class="input-wrap">
+            <textarea
+              id="gameInput"
+              class="game-input"
+              rows="3"
+              autocomplete="off"
+              placeholder="请粘贴该游戏 Steam 商店页面链接&#10;例如：https://store.steampowered.com/app/1868140/DAVE_THE_DIVER/"
+            ></textarea>
+          </div>
+          <div class="hint-row is-hidden" id="gameSearchStatus"></div>
+          <div class="steam-guide" tabindex="0">
+            <span>如何获得 Steam 商店链接</span>
+            <div class="steam-guide-popover" role="tooltip">
+              <img src="./assets/steam-store-link-guide.png" alt="Steam 商店链接获取示例" />
+            </div>
+          </div>
+          <div class="match-box is-hidden" id="matchBox" aria-live="polite"></div>
+          <div class="error-text" id="gameError"></div>
+        </div>
+
+        <div class="field-group">
+          <label for="requirementsInput">你需要的修改功能</label>
+          <div class="textarea-wrap">
+            <textarea
+              id="requirementsInput"
+              maxlength="200"
+              rows="6"
+              placeholder="例如：&#10;无限生命&#10;编辑金钱&#10;一击必杀&#10;设置游戏速度等"
+            ></textarea>
+            <span class="counter" id="requirementsCounter">0 / 200</span>
+          </div>
+          <p class="statement">
+            *声明：本“AI免费评估”仅针对游戏本体基础框架。您在此处提交的具体功能需求将作为技术团队研发参考，最终上线修改项以技术团队实际交付内容为准。本通道仅支持单机游戏、游戏单人模式，不支持内购数值、网络联机游戏。本活动最终解释权归 XMODhub 所有。
+          </p>
+          <div class="error-text" id="requirementsError"></div>
+        </div>
+
+        <div class="field-group">
+          <label for="phoneInput">请输入手机号</label>
+          <div class="phone-wrap">
+            <input
+              id="phoneInput"
+              inputmode="numeric"
+              maxlength="11"
+              autocomplete="tel"
+              placeholder="请输入手机号，以便第一时间为您推送开发进展"
+            />
+            <button type="button" class="clear-btn" id="clearPhone" aria-label="清空手机号">×</button>
+          </div>
+          <div class="error-text" id="phoneError"></div>
+        </div>
+
+        <button class="primary-btn" id="submitBtn" type="submit" disabled>
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="submitText">一键评估</span>
+        </button>
+      </form>
+
+      <aside class="panel result-panel" id="resultPanel" aria-live="polite">
+        <div class="result-empty" id="resultEmpty">
+          <h2>评估结果</h2>
+          <p>完成左侧表单后，系统将在数秒内给出评估结果。</p>
+        </div>
+        <div class="result-content is-hidden" id="resultContent"></div>
+      </aside>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="history-head">
+        <div>
+          <h2>评估记录</h2>
+          <p>记录当前浏览器的提交历史。</p>
+        </div>
+        <input id="historySearch" class="history-search" placeholder="按游戏名称筛选" autocomplete="off" />
+      </div>
+      <div class="history-list" id="historyList"></div>
+      <div class="history-actions">
+        <button type="button" class="secondary-btn" id="loadMoreBtn">查看更多</button>
+        <button type="button" class="ghost-btn" id="clearHistoryBtn">清空记录</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js?v=20260805-pending-result"></script>
+</body>
+</html>
